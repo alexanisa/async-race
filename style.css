@@ -1,0 +1,10 @@
+.car-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    border: 2px solid #ddd;
+    margin-bottom: 6px;
+}
