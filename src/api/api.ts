@@ -118,3 +118,90 @@ export async function drive(id: number) {
         return null;
     }
 }
+
+export async function getWinners(
+    page: number,
+    limit = 7,
+    sort?: 'id' | 'wins' | 'time',
+    order?: 'ASC' | 'DESC'
+) {
+    try {
+        let url = `http://127.0.0.1:3000/winners?_page=${page}&_limit=${limit}`;
+        if(sort) url += `&_sort=${sort}`;
+        if (order) url += `&_order=${order}`;
+        const res = await fetch(url);
+
+        if (!res.ok) {
+            throw new Error(`Error: ${res.status}`);
+        }
+        return await res.json();
+    } catch (error) {
+        console.error('Error', error);
+        return null;
+    }
+}
+
+export async function getWinner(id: number) {
+    try {
+        const res = await fetch(`http://127.0.0.1:3000/winners/${id}`, {
+            method: 'GET',
+        });
+        if (!res.ok) {
+            throw new Error(`Error: ${res.status}`);
+        }
+        return await res.json();
+    } catch (error) {
+        console.error('Error', error);
+        return null;
+    }
+}
+
+export async function createWinner(id: number, wins: number, time: number) {
+    try {
+        const res = await fetch(`http://127.0.0.1:3000/winners`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, wins, time })
+        });
+        if (!res.ok) {
+            throw new Error(`Error: ${res.status}`);
+        }
+        return await res.json();
+    } catch (error) {
+        console.error('Error', error);
+        return null;
+    }
+}
+
+export async function updateWinner(id: number, wins: number, time: number) {
+    try {
+        const res = await fetch(`http://127.0.0.1:3000/winners/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wins, time })
+        });
+        if (!res.ok) {
+            throw new Error(`Error: ${res.status}`);
+        }
+        return await res.json();
+    } catch (error) {
+        console.error('Error', error);
+        return null;
+    }
+}
+
+export async function deleteWinner(id: number) {
+    try {
+        const res = await fetch(`http://127.0.0.1:3000/winners/${id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        if (!res.ok) {
+            throw new Error(`Error: ${res.status}`);
+        }
+        return await res.json();
+    } catch (error) {
+        console.error('Error', error);
+        return null;
+    }
+}
