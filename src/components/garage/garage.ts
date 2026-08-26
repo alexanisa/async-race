@@ -1,4 +1,4 @@
-import { createCar, deleteCar, drive, getCars, startEngine, updateCar } from '../../api/api';
+import { createCar, deleteCar, drive, getCars, startEngine, updateCar, stopEngine } from '../../api/api';
 import type {Car} from '../../types';
 
 class Garage {
@@ -7,6 +7,8 @@ class Garage {
     totalCars: number = 0;
     limit: number = 7;
     editingID: number | null = null;
+    animationFrames: Map<number, number> = new Map();
+    carPositions: Map<number, number> = new Map();
 
     constructor() {
         this.loadCars();
@@ -21,21 +23,27 @@ class Garage {
         }
     }
 
-    animateCar(carElement: SVGElement, duration: number, finish: number) {
+    animateCar(carElement: SVGElement, duration: number, finish: number, id: number) {
+        const startPosition = this.carPositions.get(id) ?? 0;
         const startTime = performance.now();
         const animate = (currentTime: number) => {
             const elapsed = currentTime - startTime;
             const progress = Math.min(elapsed / duration, 1);
-            const position = finish * progress;
+            const position = startPosition + (finish - startPosition) * progress;
 
             carElement.style.transform = `translateX(${position}px)`;
+            this.carPositions.set(id, position);
 
             if (progress < 1) {
-                requestAnimationFrame(animate);
+                const frameId = requestAnimationFrame(animate);
+                this.animationFrames.set(id, frameId);
+            } else {
+                this.animationFrames.delete(id);
             }
         };
 
-        requestAnimationFrame(animate);
+        const frameId = requestAnimationFrame(animate);
+        this.animationFrames.set(id, frameId);
     }
 
     render() {
@@ -169,6 +177,99 @@ class Garage {
             });
         });
 
+        const startButtons = document.querySelectorAll('.start-btn');
+        startButtons.forEach(button => {
+            button.addEventListener('click', async (event) => {
+                if (!(event.currentTarget instanceof HTMLButtonElement)) {
+                    return;
+                }
+
+                const id = Number(event.currentTarget.dataset.id);
+                const data = await startEngine(id);
+                if (!data) {
+                    return;
+                }
+
+                const carElement = document.querySelector(
+                    `.car-svg[data-id="${id}"]`
+                );
+                if (!(carElement instanceof SVGElement)) {
+                    return;
+                }
+
+                const track = carElement.parentElement;
+                if (!(track instanceof HTMLElement)) {
+                    return;
+                }
+
+                const finishElement = track.querySelector('.finish-line');
+                if (!(finishElement instanceof HTMLElement)) {
+                    return;
+                }
+
+                const trackWidth = track.clientWidth;
+                const carWidth = carElement.getBoundingClientRect().width;
+                const finishWidth = finishElement.getBoundingClientRect().width;
+
+                const finish = trackWidth - carWidth - finishWidth;
+                const maxDuration = 10;
+                const duration = (50 * maxDuration) / data.velocity;
+
+                this.animateCar(carElement, duration * 1000, finish, id);
+
+                const startButton = document.querySelector(
+                    `.start-btn[data-id="${id}"]`
+                );
+
+                const stopButton = document.querySelector(
+                    `.stop-btn[data-id="${id}"]`
+                );
+
+                if (
+                    startButton instanceof HTMLButtonElement &&
+                    stopButton instanceof HTMLButtonElement
+                ) {
+                    startButton.disabled = true;
+                    stopButton.disabled = false;
+                }
+
+                await drive(id);
+            });
+        });
+
+        const stopButtons = document.querySelectorAll('.stop-btn');
+        stopButtons.forEach(button => {
+            button.addEventListener('click', async (event) => {
+                if (!(event.currentTarget instanceof HTMLButtonElement)) {
+                    return;
+                }
+
+                const id = Number(event.currentTarget.dataset.id);
+                await stopEngine(id);
+
+                const frameId = this.animationFrames.get(id);
+                if (frameId !== undefined) {
+                    cancelAnimationFrame(frameId);
+                    this.animationFrames.delete(id);
+                }
+
+                const startButton = document.querySelector(
+                    `.start-btn[data-id="${id}"]`
+                );
+
+                const stopButton = document.querySelector(
+                    `.stop-btn[data-id="${id}"]`
+                );
+                if (
+                    startButton instanceof HTMLButtonElement &&
+                    stopButton instanceof HTMLButtonElement
+                ) {
+                    startButton.disabled = false;
+                    stopButton.disabled = true;
+                }
+            });
+        });
+
         const prevBtn = document.getElementById('prev-page');
         const nextBtn = document.getElementById('next-page');
 
@@ -280,15 +381,27 @@ class Garage {
 
                         const finish = trackWidth - carWidth - finishWidth;
 
-                        this.animateCar(
-                            carElement,
-                            duration * 1000,
-                            finish
-                        );
+                        this.animateCar(carElement, duration * 1000, finish, car.id);
                     }
                 }
             });
         });
+        const resetBtn = document.getElementById('reset-btn');
+
+        resetBtn?.addEventListener('click', async () => {
+            for (const car of this.cars) {
+                const carElement = document.querySelector(
+                    `.car-svg[data-id="${car.id}"]`
+                );
+
+                if (carElement instanceof SVGElement) {
+                    carElement.style.transform = 'translateX(0px)';
+                    this.carPositions.set(car.id, 0);
+                }
+            }
+        });
+
+
     }
 
     showWinner(name: string, time: number) {
