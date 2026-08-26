@@ -13,9 +13,10 @@ class Garage {
     }
 
     async loadCars() {
-        const cars = await getCars(this.currentPage, this.limit);
-        if (cars) {
-            this.cars = cars;
+        const result = await getCars(this.currentPage, this.limit);
+        if (result) {
+            this.cars = result.cars;
+            this.totalCars = result.total;
             this.render();
         }
     }
@@ -31,7 +32,9 @@ class Garage {
                 <input type="color" id="car-color" value="#ffffff">
                 <button type="submit">Create</button>
             </form>
-            <p>Page ${this.currentPage}</p>
+            <button class="generate-btn" id ="generate-btn" >Generate 100 random cars</button>
+            <button id="clear-all-btn">Clear all cars</button>
+            <p>Page ${this.currentPage} - Total: ${this.totalCars}</p>
             <div class="car-list">
                 ${this.cars.map(car => `
                     <div class="car-item">
@@ -52,6 +55,11 @@ class Garage {
                         <button class="delete-btn" data-id="${car.id}">Delete</button>
                     </div>
                 `).join('')}
+            </div>
+            <div class="pagination">
+                <button id="prev-page" ${this.currentPage === 1 ? 'disabled' : ''}>Prev</button>
+                <span>Page ${this.currentPage}</span>
+                <button id="next-page">Next</button>
             </div>
         `;
 
@@ -98,9 +106,62 @@ class Garage {
                 if (submitBtn) submitBtn.textContent = 'Save';
             });
         });
+
+        const prevBtn = document.getElementById('prev-page');
+        const nextBtn = document.getElementById('next-page');
+
+        prevBtn?.addEventListener('click', () => {
+            if (this.currentPage > 1) {
+                this.currentPage--;
+                this.loadCars();
+            }
+        });
+
+        nextBtn?.addEventListener('click', ()=> {
+            this.currentPage++;
+            this.loadCars();
+        })
+        const garage = this;
+        const generateBtn = document.getElementById('generate-btn') as HTMLButtonElement;
+        generateBtn?.addEventListener('click', async () => {
+            const brands = ['Tesla', 'Ford', 'BMW', 'Mercedes', 'Toyota', 'Honda', 'Nissan', 'Audi', 'Volkswagen', 'Hyundai'];
+            const models = ['Model S', 'Mustang', 'X5', 'C-Class', 'Camry', 'Civic', 'Teana', 'A4', 'Golf', 'Creta'];
+            const colors = ['#FF5733', '#33FF57', '#3357FF', '#FF33A8', '#FFD733', '#33FFF5', '#A833FF', '#FF8333', '#33A8FF', '#FF33A8'];
+            generateBtn.textContent = 'Generating...';
+            generateBtn.disabled = true;
+
+            for (let i=0; i <100 ; i++) {
+                const randomBrand = brands[Math.floor(Math.random() * brands.length)];
+                const randomModel = models[Math.floor(Math.random() * models.length)];
+                const nameCar = `${randomBrand} ${randomModel}`;
+                const colorCar = colors[Math.floor(Math.random() * colors.length)];
+                await createCar(nameCar, colorCar);
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            await garage.loadCars();
+
+            generateBtn.textContent = 'Generate 100 random cars';
+            generateBtn.disabled = false;
+        })
+
+        const clearBtn = document.getElementById('clear-all-btn') as HTMLButtonElement;
+        clearBtn?.addEventListener('click', async ()=> {
+            clearBtn.textContent = 'Clearing...';
+            clearBtn.disabled = true;
+
+            const allCars = await getCars(1, 1000);
+            if (allCars && allCars.cars) {
+                for (const car of allCars.cars) {
+                    await deleteCar(car.id);
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+                await this.loadCars();
+            }
+
+            clearBtn.textContent = 'Clear all';
+            clearBtn.disabled = false;
+        })
     }
-
-
 }
 
 export { Garage };

@@ -4,10 +4,16 @@ export async function getCars(page: number, limit = 7) {
         if (!res.ok) {
             throw new Error(`Error: ${res.status}`);
         }
-        return await res.json();
+        return {
+            cars: await res.json(),
+            total: Number(res.headers.get('X-Total-Count'))
+        };
     } catch (error) {
         console.error('Error', error);
-        return [];
+        return {
+            cars: [],
+            total: 0
+        }
     }
 }
 
