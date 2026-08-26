@@ -1,4 +1,4 @@
-import { createCar, getCar, getCars } from '../../api/api';
+import { createCar, deleteCar, getCars, updateCar } from '../../api/api';
 import type {Car} from '../../types';
 
 class Garage {
@@ -6,6 +6,7 @@ class Garage {
     cars: Car[] = [];
     totalCars: number = 0;
     limit: number = 7;
+    editingID: number | null = null;
 
     constructor() {
         this.loadCars();
@@ -47,6 +48,8 @@ class Garage {
                             <rect x="3" y="12" width="3" height="3" rx="1" fill="#ff5722" />
                         </svg>
                         <span>${car.name}</span>
+                        <button class="update-btn" data-id="${car.id}">Update</button>
+                        <button class="delete-btn" data-id="${car.id}">Delete</button>
                     </div>
                 `).join('')}
             </div>
@@ -58,9 +61,43 @@ class Garage {
 
             const carName = (document.getElementById('car-name') as HTMLInputElement).value;
             const carColor = (document.getElementById('car-color') as HTMLInputElement).value;
-            await createCar(carName, carColor);
+
+            if (this.editingID !== null) {
+                await updateCar(this.editingID, carName, carColor);
+                this.editingID = null;
+                const submitBtn = document.querySelector('#create-car-form button[type ="submit"]');
+                if (submitBtn) submitBtn.textContent = 'Create';
+            } else {
+                await createCar(carName, carColor);
+            }
             await this.loadCars();
         })
+
+        const btnsDel = document.querySelectorAll('.delete-btn');
+        btnsDel.forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = Number((e.target as HTMLButtonElement).dataset.id);
+                await deleteCar(id);
+                await this.loadCars();
+            });
+        });
+
+        const btnsUpdate = document.querySelectorAll('.update-btn');
+        btnsUpdate.forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = Number((e.target as HTMLButtonElement).dataset.id);
+
+                const car = this.cars.find(c => c.id === id);
+                if (!car) return;
+
+                (document.getElementById('car-name') as HTMLInputElement).value = car.name;
+                (document.getElementById('car-color') as HTMLInputElement).value = car.color;
+
+                this.editingID = id;
+                const submitBtn = document.querySelector('#create-car-form button[type ="submit"]');
+                if (submitBtn) submitBtn.textContent = 'Save';
+            });
+        });
     }
 
 
